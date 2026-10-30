@@ -1,0 +1,59 @@
+name: Deploy preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type deploy-preview to continue
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-preview
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event.inputs.confirmation == 'deploy-preview'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: preview
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
+      CLOUDFLARE_RESOURCES_CONFIGURED: ${{ vars.CLOUDFLARE_RESOURCES_CONFIGURED }}
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Require preview account configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Set the preview CLOUDFLARE_ACCOUNT_ID environment variable."; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Set the preview CLOUDFLARE_API_TOKEN environment secret."; exit 1; }
+          test -n "$CLOUDFLARE_PAGES_PROJECT_NAME" || { echo "::error::Set the preview CLOUDFLARE_PAGES_PROJECT_NAME environment variable."; exit 1; }
+          test "$CLOUDFLARE_RESOURCES_CONFIGURED" = "true" || { echo "::error::Configure and review isolated preview resource bindings before deployment."; exit 1; }
+          grep -Eq '"database_id"[[:space:]]*:[[:space:]]*"[[:xdigit:]-]{36}"' worker/wrangler.preview.jsonc || { echo "::error::Add the approved preview D1 database ID before deployment."; exit 1; }
+
+      - name: Verify source before deploy
+        run: npm run check
+
+      - name: Deploy preview Worker
+        run: npm exec -- wrangler deploy --config worker/wrangler.preview.jsonc
+
+      - name: Deploy preview Pages assets
+        run: npm exec -- wrangler pages deploy dist --project-name "$CLOUDFLARE_PAGES_PROJECT_NAME" --branch preview

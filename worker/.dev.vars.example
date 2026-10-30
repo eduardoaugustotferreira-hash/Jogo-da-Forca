@@ -1,0 +1,4 @@
+# Copy to .dev.vars and provide local-only values if a later auth implementation needs them.
+# Never commit .dev.vars or paste these values into chat.
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_SECRET=

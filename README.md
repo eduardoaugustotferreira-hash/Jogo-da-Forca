@@ -12,7 +12,7 @@ Preparar uma base organizada, acessível e modular para um futuro jogo da forca 
 - SVG reservado para elementos gráficos futuros.
 - Git e GitHub para versionamento.
 
-Não há dependências, backend ou banco de dados.
+Não há frameworks de interface. Wrangler é uma dependência de desenvolvimento local para validar o scaffold Cloudflare. O Worker, Durable Object e schema D1 desta etapa são apenas fundação: autenticação e mecânicas multiplayer ainda não foram implementadas, e nenhum recurso remoto foi criado.
 
 ## Estrutura de diretórios
 
@@ -21,6 +21,7 @@ jogo-da-forca/
 ├── .github/
 │   ├── agents/                 # Agentes personalizados do Copilot
 │   ├── skills/                 # Skills reutilizáveis carregadas sob demanda
+│   ├── workflows/              # CI e deploys manuais com gates de ambiente
 │   └── copilot-instructions.md # Instruções gerais do projeto para o Copilot
 ├── .vscode/
 │   └── settings.json           # Preferências locais do editor
@@ -36,12 +37,20 @@ jogo-da-forca/
 │   ├── ui/                     # Futuras interações e componentes de interface
 │   ├── utils/                  # Futuras funções utilitárias compartilhadas
 │   └── main.js                 # Ponto de entrada JavaScript (módulo ES)
+├── worker/
+│   ├── src/                    # Worker e Durable Object em scaffold
+│   ├── migrations/             # Migrações D1 ainda não aplicadas remotamente
+│   └── wrangler*.jsonc         # Configuração local, preview e produção
 ├── styles/
 │   ├── base.css                # Estilos globais e variáveis
 │   ├── components.css          # Estilos dos componentes da página inicial
 │   └── responsive.css          # Ajustes responsivos e de acessibilidade
-├── tests/                      # Espaço reservado para testes futuros
+├── tests/                      # Testes automatizados
+├── scripts/                    # Build estático do frontend
 ├── docs/                       # Regras, arquitetura, governança e plano Cloudflare
+├── package.json                # Scripts locais e versão fixada do Wrangler
+├── package-lock.json           # Dependências reprodutíveis
+├── .node-version               # Versão Node.js usada localmente e no CI
 ├── index.html                  # Página inicial
 ├── .gitignore                  # Arquivos ignorados pelo Git
 └── README.md                   # Documentação principal
@@ -50,6 +59,21 @@ jogo-da-forca/
 As pastas ainda vazias contêm `.gitkeep` para serem preservadas pelo Git.
 
 ## Executar localmente
+
+Requisito de desenvolvimento: Node.js `24.22.2` (versão em `.node-version`) e npm. Instale as dependências fixadas pelo lockfile e execute as verificações:
+
+```powershell
+npm ci
+npm run check
+```
+
+`npm run check` executa os testes do scaffold, gera `dist/`, valida a migração D1 local e verifica a configuração Wrangler com dry-run. Para iniciar o Worker local:
+
+```powershell
+npm run wrangler:dev
+```
+
+O Worker atual é um scaffold: `/health` informa que ainda não está pronto e rotas de sala retornam 501. Não há login, jogo ou serviço Cloudflare remoto configurado.
 
 Como os módulos ES devem ser carregados por HTTP, não abra o HTML diretamente como arquivo. Inicie um servidor estático na raiz do projeto com Python:
 
@@ -64,6 +88,8 @@ py -m http.server 8000
 ```
 
 Abra `http://localhost:8000` no navegador. Para encerrar o servidor, use `Ctrl+C` no terminal.
+
+Para servir o build de produção do frontend, gere `dist/` com `npm run build` e use `py -m http.server 8000 --directory dist`.
 
 ## Agentes e Skills do Copilot
 

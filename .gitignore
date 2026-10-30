@@ -7,6 +7,17 @@ Desktop.ini
 .vscode/*
 !.vscode/settings.json
 
+# Node.js
+node_modules/
+dist/
+
+# Cloudflare local development
+.wrangler/
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+
 # Arquivos temporários
 *.log
 *.tmp

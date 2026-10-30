@@ -1,0 +1,32 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "a-forca-medieval-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": false,
+  "vars": {
+    "APP_ENV": "local"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "Room"
+      }
+    ]
+  },
+  "exports": {
+    "Room": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "a-forca-medieval-local",
+      "database_id": "local",
+      "migrations_dir": "migrations"
+    }
+  ],
+}
