@@ -1,0 +1,22 @@
+@media (max-width: 480px) {
+  .page-shell {
+    padding: 1rem;
+  }
+
+  .intro-card {
+    padding: 3.5rem 1.25rem;
+  }
+
+  .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}

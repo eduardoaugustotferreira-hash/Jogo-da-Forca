@@ -1,0 +1,36 @@
+:root {
+  color-scheme: dark;
+  font-family: Georgia, "Times New Roman", serif;
+  background: #101914;
+  color: #f4ecd8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --color-gold: #d7b66b;
+  --color-muted: #c4c0ad;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(49 78 57 / 42%), transparent 58%),
+    linear-gradient(145deg, #17241d, #0d1410 72%);
+}
+
+body,
+button,
+a {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+::selection {
+  color: #101914;
+  background: var(--color-gold);
+}
