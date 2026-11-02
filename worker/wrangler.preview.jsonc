@@ -5,9 +5,12 @@
   "compatibility_date": "2026-10-30",
   "workers_dev": true,
   "vars": {
-    "APP_ENV": "preview"
+    "APP_ENV": "preview",
+    "ALLOWED_ORIGINS": "https://preview.a-forca-medieval.pages.dev",
+    "PUBLIC_ORIGIN": "https://preview.a-forca-medieval.pages.dev",
+    "GOOGLE_REDIRECT_URI": "https://preview.a-forca-medieval.pages.dev/api/auth/google/callback",
+    "GITHUB_REDIRECT_URI": "https://preview.a-forca-medieval.pages.dev/api/auth/github/callback"
   },
-  // Add this environment's approved D1 database ID before enabling remote deploys.
   "durable_objects": {
     "bindings": [
       {
@@ -21,5 +24,13 @@
       "type": "durable-object",
       "storage": "sqlite"
     }
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "a-forca-medieval-preview",
+      "database_id": "0b92be7b-2da7-451d-acee-1ef39e811c38",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

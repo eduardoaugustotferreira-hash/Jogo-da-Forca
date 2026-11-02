@@ -12,6 +12,7 @@
     "wrangler:dev": "wrangler dev --config worker/wrangler.jsonc",
     "wrangler:check": "wrangler deploy --dry-run --config worker/wrangler.jsonc --env \"\"",
     "db:migrate:local": "wrangler d1 migrations apply a-forca-medieval-local --local --config worker/wrangler.jsonc",
+    "words:import": "node scripts/import-word-bank.mjs",
     "check": "npm test && npm run build && npm run db:migrate:local && npm run wrangler:check"
   },
   "devDependencies": {

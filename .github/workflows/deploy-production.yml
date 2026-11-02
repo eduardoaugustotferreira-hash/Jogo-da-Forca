@@ -27,6 +27,7 @@ jobs:
       CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
       CLOUDFLARE_PAGES_PRODUCTION_BRANCH: ${{ vars.CLOUDFLARE_PAGES_PRODUCTION_BRANCH }}
       CLOUDFLARE_RESOURCES_CONFIGURED: ${{ vars.CLOUDFLARE_RESOURCES_CONFIGURED }}
+      PUBLIC_APP_ENV: production
     steps:
       - name: Check out reviewed source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -47,7 +48,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Set the production CLOUDFLARE_ACCOUNT_ID environment variable."; exit 1; }
           test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Set the production CLOUDFLARE_API_TOKEN environment secret."; exit 1; }
           test -n "$CLOUDFLARE_PAGES_PROJECT_NAME" || { echo "::error::Set the production CLOUDFLARE_PAGES_PROJECT_NAME environment variable."; exit 1; }
-          test -n "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" || { echo "::error::Set the production CLOUDFLARE_PAGES_PRODUCTION_BRANCH environment variable."; exit 1; }
+          test "$CLOUDFLARE_PAGES_PRODUCTION_BRANCH" = "main" || { echo "::error::Production Pages deployments are restricted to the main branch."; exit 1; }
           test "$CLOUDFLARE_RESOURCES_CONFIGURED" = "true" || { echo "::error::Configure and review production resource bindings before deployment."; exit 1; }
           grep -Eq '"database_id"[[:space:]]*:[[:space:]]*"[[:xdigit:]-]{36}"' worker/wrangler.production.jsonc || { echo "::error::Add the approved production D1 database ID before deployment."; exit 1; }
 

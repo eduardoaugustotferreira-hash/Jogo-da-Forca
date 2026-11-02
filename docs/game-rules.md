@@ -39,6 +39,8 @@ Este documento define o contrato pretendido para partidas PvP. A implementação
 - A meta é ter pelo menos 1.000 palavras portuguesas reais, únicas e validadas; ainda não existe corpus validado no repositório.
 - Não se criam palavras para preencher a meta. Importação depende de fonte real, licença compatível, proveniência e relatório de validação.
 - Metadados incluem categoria, forma canônica, tamanho, versão/rubrica de dificuldade e estatísticas de frequência de letras, vogais e letras distintas.
+- A tabela `word_entries` mantém uma chave de comparação única, versão da normalização, métricas calculadas, proveniência, licença e estado de validação. A política atual preserva a forma de exibição em NFC e compara letras minúsculas sem acentos; detalhes e pesos da rubrica estão em [word-bank.md](./word-bank.md).
+- A migração cria apenas o schema: não contém palavras. A meta de 1.000 refere-se a entradas únicas, validadas e com fonte/licença confirmadas, não à capacidade da tabela.
 - O sorteio acontece no servidor e evita repetição por toda a partida, inclusive em reinícios de rodada e Deathmatch.
-- O sistema seleciona pares dentro de tolerâncias documentadas de tamanho e estatísticas, sem revelar a resposta secreta.
+- O seletor PvP exige faixa de dificuldade e versão de métricas compatíveis, além de tolerâncias documentadas de tamanho e estatísticas; ausência de par retorna condição explícita, sem revelar ou inventar resposta.
 - Se o conjunto elegível sem uso se esgotar, a partida deve encerrar/cancelar de forma explícita ou usar uma política futura aprovada. Não repetir nem inventar palavras silenciosamente.

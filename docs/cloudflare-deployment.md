@@ -1,6 +1,6 @@
 # Preparação e implantação Cloudflare
 
-> Configuração local criada; nenhum recurso foi provisionado, nenhuma conta foi conectada e nenhum deploy foi realizado. Verificar documentação oficial, limites e custos vigentes antes de qualquer ação remota.
+> Estado atualizado: D1, Worker e Durable Object de preview foram provisionados e as migrações foram aplicadas; o Pages Direct Upload já tem deployment na branch `preview`. A configuração local agora inclui Pages Functions e Service Binding, mas ainda não foi publicada. Produção segue sem binding para a API.
 
 ## Componentes planejados
 
@@ -15,11 +15,13 @@
 
 - `package.json` fixa Wrangler como dependência de desenvolvimento e define scripts locais.
 - `.node-version` fixa Node 24.22.2; Wrangler deve ser invocado pela dependência local.
-- `scripts/build-pages.mjs` monta `dist/` apenas com a página, estilos, módulo ES e assets públicos.
+- `scripts/build-pages.mjs` monta `dist/` com a página, estilos, módulos ES, assets públicos e `_routes.json` restrito a `/api/*`. `PUBLIC_APP_ENV` é um valor público de build; o frontend sempre usa `/api` como base same-origin.
+- `functions/api/[[path]].js` encaminha somente `/api/*` ao binding fixo `API`; remove cabeçalhos de forwarding não confiáveis, limita métodos/redirects e mantém cookies host-only no domínio Pages.
+- `wrangler.jsonc` é a configuração fonte de verdade do Pages Direct Upload. `env.preview.services.API` aponta somente para `a-forca-medieval-api-preview`; `env.production.services` está vazio. A configuração ainda precisa de deployment autorizado para ser aplicada remotamente.
 - `worker/wrangler.jsonc` define o Worker local, o binding SQLite do Durable Object e o D1 local com identificador `local`.
-- `worker/wrangler.preview.jsonc` e `worker/wrangler.production.jsonc` mantêm configurações de Worker separadas. Cada uma tem namespace DO isolado; bindings D1 remotos permanecem ausentes até que os recursos existam e os IDs sejam adicionados com aprovação.
+- `worker/wrangler.preview.jsonc` e `worker/wrangler.production.jsonc` mantêm configurações de Worker separadas. Preview usa o Worker `a-forca-medieval-api-preview`, o namespace DO `Room` e D1 `a-forca-medieval-preview` (ID `0b92be7b-2da7-451d-acee-1ef39e811c38`). Produção não tem binding D1 nem recursos deste projeto.
 - `worker/src/` contém somente endpoints de scaffold: health reporta `ready: false`; rotas de sala retornam 501 até autenticação e multiplayer serem implementados.
-- `worker/migrations/0001_initial.sql` descreve usuários, identidades OAuth, sessões, partidas, participantes e estatísticas; ainda não foi aplicada a qualquer banco.
+- `worker/migrations/0001_initial.sql` e `0002_word_entries.sql` descrevem o schema inicial e o banco de palavras. Ambas foram aplicadas no D1 local e no D1 remoto de preview; `word_entries` continua vazia.
 - `.github/workflows/ci.yml` não usa credenciais Cloudflare. Deploys são `workflow_dispatch`, exigem confirmação digitada e environments `preview`/`production`. Antes de habilitá-los, configurar environment protection/reviewers no GitHub, IDs/bindings reais, nome do Pages project e secrets/vars por ambiente.
 
 Os workflows de deploy não aplicam migrações D1. A migração remota exige um passo separado, revisão do SQL e autorização humana para o banco e ambiente escolhidos. Os workflows falham fechados até `CLOUDFLARE_RESOURCES_CONFIGURED=true` e até o config do Worker do ambiente conter um `database_id` UUID aprovado. O flag e a verificação de formato são preflights, não substituem revisão humana nem criam recursos.
@@ -29,12 +31,26 @@ Os workflows de deploy não aplicam migrações D1. A migração remota exige um
 | Ambiente | Frontend | Worker e DO | D1 |
 |---|---|---|---|
 | Local | build em `dist/` | Wrangler local; sala usa storage SQLite local | `a-forca-medieval-local`, somente local |
-| Preview | Pages branch `preview`, acionado manualmente | `worker/wrangler.preview.jsonc`; namespace DO isolado | ainda não criado; configurar ID/binding exclusivo após autorização |
-| Produção | Pages branch configurada em `CLOUDFLARE_PAGES_PRODUCTION_BRANCH`, acionado manualmente | `worker/wrangler.production.jsonc`; namespace DO separado | ainda não criado; configurar ID/binding exclusivo após autorização |
+| Preview | Pages branch `preview`, URL de alias `https://preview.a-forca-medieval.pages.dev`; deployment ativo | Config local Pages Function `/api/*` com Service Binding `API` → Worker `a-forca-medieval-api-preview`; DO `Room`; callbacks futuros fixados no alias Pages | D1 `a-forca-medieval-preview`; migrações 0001/0002 aplicadas, tabela de palavras vazia |
+| Produção | Pages branch `main`; ainda sem deploy | `worker/wrangler.production.jsonc`; sem deploy de produção | D1 de produção não criado/configurado |
 
-Bindings de Durable Objects e D1 não são herdados por ambientes Wrangler e precisam ser repetidos explicitamente. As configurações por ambiente declaram o DO, mas deixam D1 sem binding remoto até obter database IDs válidos. O primeiro deploy do Worker com classe DO pode criar namespaces; não executar sem aprovação específica. O static Pages e API Worker são recursos separados; Pages Functions não cria/publica o DO.
+Bindings de Durable Objects e D1 não são herdados por ambientes Wrangler e precisam ser repetidos explicitamente. Preview declara os bindings remotos já provisionados; produção declara o DO, mas não tem binding D1 nem deploy. O static Pages e API Worker são recursos separados; Pages Functions não cria/publica o DO.
 
-Pages previews são públicos por padrão. O workflow atual só publica preview manualmente; configurar Cloudflare Access e proteção de preview é uma decisão pendente de conta. A URL/dominio do frontend, API e callback OAuth ainda não está definida.
+O projeto Pages `a-forca-medieval` usa Direct Upload, com `main` como branch de produção e domínio base `https://a-forca-medieval.pages.dev`. O deployment atual está na branch `preview`. O workflow de preview publica manualmente nessa branch; `src/config.js` usa `/api`, e o build gera `_routes.json` para invocar Functions somente nesse prefixo. A Function encaminha ao serviço configurado, preservando métodos, query, corpo, cookies e redirects permitidos. Os cookies `Domain` recebidos do Worker têm o atributo removido para que sejam host-only no Pages. A camada proxy não autentica usuários; a autorização futura permanece responsabilidade do Worker.
+
+O Wrangler Pages config separa `env.preview` e `env.production`: só Preview configura o Service Binding `API` ao Worker de preview, enquanto produção declara uma lista vazia de serviços. `wrangler types --config wrangler.jsonc --env preview` confirma o binding de Preview, e a geração para `production` não contém o binding. Pages local aceita somente a configuração base, não `--env` nem `--branch`; por isso a separação foi verificada pelo gerador de tipos e testes da configuração, não por seleção do ambiente no servidor local. A alteração ainda precisa de publicação autorizada para entrar em vigor. Redirects externos são permitidos somente aos endpoints de autorização Google/GitHub fixos; outros destinos são recusados.
+
+Teste local com Wrangler `4.156.0`, Pages dev e um Worker fixture sintético confirmou GET/POST, body/query/cookie, Set-Cookie, redirects permitidos e bloqueados, escopo `/api/*`, erro 404 fora do prefixo e echo de WebSocket via Service Binding. Isso confirma o encaminhamento no runtime local com fixture, não a disponibilidade do WebSocket no deployment remoto atual.
+
+Previews Pages são públicos por padrão; configurar Cloudflare Access continua pendente. Direct Upload não pode ser convertido posteriormente para Git integration. Callbacks fixos de Preview estão preparados em `worker/wrangler.preview.jsonc`, mas ainda não registrados nos consoles Google/GitHub; OAuth não foi implementado. Callback e binding de produção permanecem sem definição/configuração.
+
+O Worker `workers.dev` continua diretamente acessível. CORS não é controle de autorização: rotas privadas futuras devem exigir sessão/CSRF e validar permissões no Worker, independentemente de a chamada ter vindo do Pages Service Binding. Hoje `/health` é público e as rotas de sala falham fechadas com 501; o proxy não altera essa superfície de acesso.
+
+Documentação oficial consultada em 2026-11-02:
+
+- [Pages Functions bindings](https://developers.cloudflare.com/pages/functions/bindings/) confirma `context.env.SERVICE.fetch(request)` e o uso de bindings de serviço.
+- [Pages Wrangler configuration](https://developers.cloudflare.com/pages/functions/wrangler-configuration/) define `services`, os ambientes `preview`/`production` e alerta que o Wrangler config passa a ser fonte da verdade. A configuração Preview aplica-se às deployments Preview, não apenas a uma branch; antes de publicar, comparar com a configuração atual do projeto no dashboard.
+- [Workers Service Bindings](https://developers.cloudflare.com/workers/runtime-apis/bindings/service-bindings/) documenta o encaminhamento interno e a conexão local entre processos Wrangler.
 
 ## Ambientes e segredos
 
@@ -56,30 +72,31 @@ Para CI, `CLOUDFLARE_API_TOKEN` é GitHub Environment secret com escopo mínimo;
 
 1. Em pull requests e push para `main`: executar `npm ci` e `npm run check` sem secrets Cloudflare.
 2. Deploy de preview: disparo manual na branch `main`, input exato `deploy-preview`, environment GitHub `preview`, credenciais/recursos exclusivos de preview e preflight.
-3. Produção: disparo manual na branch `main`, input exato `deploy-production`, environment protegido `production`, checks verdes, credenciais/recursos próprios e reviewer humano independente.
+3. Produção: disparo manual na branch `main`, input exato `deploy-production`, Pages branch fixada em `main`, environment protegido `production`, checks verdes, credenciais/recursos próprios e reviewer humano independente.
 4. Configurar fora dos arquivos: required reviewers, proteção contra auto-review, regras de branch e secrets/vars nos environments GitHub. A existência de `environment:` no YAML, sozinha, não garante que o ambiente esteja protegido.
 5. Não passar código de PR/fork a workflows com secrets. Actions estão fixadas por SHA; manter esse pin revisado.
 6. Deploys não aplicam migrations automaticamente. Fazer revisão e aprovação separadas para cada migração remota.
 7. Registrar commit, ambiente, versões e resultado sem secrets.
 
-Deploy segue bloqueado até os resources IDs/bindings remotos serem configurados e revisados. Nenhum workflow foi executado nesta etapa.
+O workflow de preview sempre publica Pages com `--branch preview`; o workflow de produção recusa branch Pages diferente de `main`. O Direct Upload de Pages também inclui a pasta `functions/` quando Wrangler é executado da raiz e o build contém `_routes.json`. Ainda é necessário configurar e verificar no GitHub os required reviewers do environment `production`; o YAML sozinho não impõe essa proteção. O Service Binding e Pages Function locais ainda não foram publicados após essa mudança.
 
 ## Checklist antes de provisionar
 
 - [ ] Consultar documentação oficial de [Pages](https://developers.cloudflare.com/pages/), [Workers](https://developers.cloudflare.com/workers/), [Durable Objects](https://developers.cloudflare.com/durable-objects/), [D1](https://developers.cloudflare.com/d1/), [Wrangler](https://developers.cloudflare.com/workers/wrangler/) e [preços](https://developers.cloudflare.com/workers/platform/pricing/).
-- [ ] Confirmar conta, plano, limites, custos previstos, permissões mínimas e região aplicável.
+- [x] Confirmar a conta usada na criação do Pages e verificar que `a-forca-medieval` não existia; confirmar o projeto após criação.
+- [ ] Confirmar plano, limites, custos previstos, permissões mínimas e região aplicável.
 - [ ] Aprovar recursos/nomes/ambientes e revisar configuração existente antes de alteração.
 - [ ] Definir fonte e licença do conjunto de palavras; ainda não há 1.000 palavras validadas no repositório.
 - [ ] Definir OAuth callback URLs e configurar secrets diretamente em local protegido, nunca em conversa.
 - [ ] Validar migrações, recuperação de Durable Object e rollback com dados descartáveis.
 - [ ] Aprovar separadamente qualquer criação remota, alteração de permissão/cobrança ou deploy.
 - [ ] Criar ambientes GitHub `preview` e `production`, configurar reviewers independentes e proteção contra auto-review.
-- [ ] Obter IDs D1 separados e adicioná-los aos bindings explícitos de cada ambiente; não omitir IDs em deploy.
-- [ ] Confirmar nomes de projeto Pages, domínio/API origin, callbacks OAuth e política de acesso para previews.
+- [x] Configurar o ID D1 de preview no binding `DB`; produção continua sem ID.
+- [x] Definir o nome/domínio do Pages e URL do Worker de preview; callbacks OAuth e política de acesso para previews continuam pendentes.
 
 ## Estado
 
-Foram criados configuração Wrangler local, Worker/DO scaffold, migração SQL inicial, scripts e workflows. Nenhum Worker/DO/D1 remoto, secret, ambiente protegido GitHub, binding remoto, callback OAuth ou projeto Pages foi criado/configurado; nenhum deploy ou migração remota ocorreu. Node e Wrangler devem ser instalados/validados localmente antes de executar os scripts. Requisitos de plano, custos e comandos devem ser revalidados com a documentação oficial quando uma ação remota for autorizada.
+Recursos remotos existentes: Worker de preview `a-forca-medieval-api-preview`, Durable Object `Room`, D1 `a-forca-medieval-preview` e projeto Pages Direct Upload `a-forca-medieval`. O frontend ainda não foi enviado ao Pages; não houve deploy de produção. Nenhum secret OAuth ou recurso de produção deste projeto foi configurado. nenhum deploy ou migração remota ocorreu. Node e Wrangler devem ser instalados/validados localmente antes de executar os scripts. Requisitos de plano, custos e comandos devem ser revalidados com a documentação oficial quando uma ação remota for autorizada.
 
 ## Validação local
 

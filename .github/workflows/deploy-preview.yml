@@ -26,6 +26,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME }}
       CLOUDFLARE_RESOURCES_CONFIGURED: ${{ vars.CLOUDFLARE_RESOURCES_CONFIGURED }}
+      PUBLIC_APP_ENV: preview
     steps:
       - name: Check out reviewed source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

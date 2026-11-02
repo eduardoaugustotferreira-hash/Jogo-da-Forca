@@ -1,3 +1,5 @@
+export { API_BASE_URL, APP_ENV } from "./config.js";
+
 const appStatus = document.querySelector("#app-status");
 
 if (!(appStatus instanceof HTMLElement)) {

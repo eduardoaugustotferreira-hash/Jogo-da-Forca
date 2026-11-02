@@ -2,11 +2,12 @@
 
 ## Estado atual
 
-O repositório contém apenas a página HTML/CSS/ESM inicial. Worker, Durable Objects, D1, OAuth e WebSockets ainda não foram implementados.
+O repositório contém a página HTML/CSS/ESM, um Worker/DO scaffold, schema D1, e configuração local para encaminhar `/api/*` pelo Pages Function ao Worker de preview via Service Binding. OAuth e gameplay/WebSockets ainda não foram implementados; o proxy não substitui autenticação.
 
 ## Componentes e limites
 
 - **Cloudflare Pages:** entrega o frontend estático em HTML5, CSS3, JavaScript ES e SVG.
+- **Pages Functions:** encaminha somente `/api/*` por binding `API`; binding configurado no Wrangler para Preview. Produção não aponta para o Worker de preview.
 - **Cloudflare Worker:** API, início/retorno OAuth, resolução de sessão e autorização antes de upgrades WebSocket.
 - **Durable Object por sala:** estado autoritativo, fila serializada de comandos, conexões da sala, timers de desconexão, palavras secretas, vidas, eventos, placar e resultados.
 - **D1:** contas, identidades de provedores vinculadas explicitamente, estatísticas e metadados/corpus validado de palavras. Segredos OAuth não pertencem ao D1.
@@ -16,11 +17,13 @@ O repositório contém apenas a página HTML/CSS/ESM inicial. Worker, Durable Ob
 
 ### Login e sessão
 
-1. Cliente solicita login Google ou GitHub ao Worker.
+1. Cliente usa `/api/auth/...` no host Pages; Pages Function encaminha ao Worker pelo binding fixo, sem aceitar destinos do navegador.
 2. Worker cria `state` aleatório de uso único e, quando aplicável, PKCE; redireciona ao provedor com redirect URI previamente registrada.
 3. Worker valida callback, `state`, tokens/identidade e erros no servidor. Google usa OIDC; GitHub usa OAuth e valida identidade via API oficial com identificador estável.
 4. Worker associa a identidade do provedor sem merge por e-mail. Novo provedor só pode ser vinculado por ação explícita de conta autenticada.
 5. Worker emite sessão opaca em cookie seguro; logout revoga sessão e limpa cookie.
+
+Callbacks de Preview preparados (ainda não registrados nos provedores): `https://preview.a-forca-medieval.pages.dev/api/auth/google/callback` e `https://preview.a-forca-medieval.pages.dev/api/auth/github/callback`. O Worker deve usar URLs de callback fixas configuradas por ambiente; não construir callback confiando em `Host` ou `X-Forwarded-Host`.
 
 ### Sala e WebSocket
 
@@ -54,10 +57,10 @@ O protocolo deverá documentar, por evento, destinatário, esquema, fase permiti
 - `users`: ID interno, datas de criação/atualização e estado da conta.
 - `provider_identities`: usuário, provedor, subject/ID estável, timestamps; unicidade por provedor+subject. Sem Client Secrets.
 - `sessions`: identificador protegido, user ID, expiração, revogação e metadados mínimos.
-- `word_entries`: forma canônica, comparação normalizada, categoria, comprimento, dificuldade versionada, estatísticas linguísticas, fonte/licença e estado de validação.
+- `word_entries`: forma canônica e de exibição, chave de comparação única com versão da normalização, categoria, comprimento, dificuldade versionada, contagens de letras/vogais/consoantes, frequências, padrão de repetições, raridade, fonte/licença e estado de validação. A migração `0002_word_entries.sql` cria somente a estrutura, sem popular o corpus.
 - `matches` e `match_players`: estado terminal, placar, datas e estatísticas; sem armazenar tokens OAuth.
 
-O estado ativo e respostas secretas ficam no Durable Object. Modelo SQL, índices, retenção e políticas de privacidade precisam ser revisados antes das migrações.
+O estado ativo e respostas secretas ficam no Durable Object. A preparação do corpus, política pt-BR, rubrica de dificuldade e fluxo de staging estão em [word-bank.md](./word-bank.md). Somente entradas com proveniência/licença revisadas e `validation_status = 'validated'` são elegíveis para seleção. O seletor de pares é código de servidor e retorna estado controlado se não houver palavras suficientes/equivalentes. Modelo SQL, índices, retenção e políticas de privacidade precisam ser revisados antes de aplicar migrações remotas.
 
 ## Testes de arquitetura
 
@@ -78,3 +81,4 @@ Usar relógio e aleatoriedade injetáveis, dois clientes sintéticos e storage i
 - [ ] Expiração de abandono concede vitória ao jogador presente; ausência de ambos cancela sem pontuação.
 - [ ] Corpus valida unicidade, licença, normalização, metadados, métricas e ausência de repetição/pares desequilibrados.
 - [ ] Interface funciona por teclado, em viewport móvel e com movimento reduzido, sem resposta secreta em markup/estado.
+- [x] Pages Function local encaminha HTTP e WebSocket pela Service Binding usando Worker fixture; isso não significa que login ou multiplayer estejam implementados.

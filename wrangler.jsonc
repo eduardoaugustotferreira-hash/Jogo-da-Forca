@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "a-forca-medieval",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-30",
+  "services": [],
+  "vars": {
+    "APP_ENV": "local",
+    "PUBLIC_ORIGIN": "http://localhost:8788"
+  },
+  "env": {
+    "preview": {
+      "services": [
+        {
+          "binding": "API",
+          "service": "a-forca-medieval-api-preview"
+        }
+      ],
+      "vars": {
+        "APP_ENV": "preview",
+        "PUBLIC_ORIGIN": "https://preview.a-forca-medieval.pages.dev"
+      }
+    },
+    "production": {
+      "services": [],
+      "vars": {
+        "APP_ENV": "production",
+        "PUBLIC_ORIGIN": "https://a-forca-medieval.pages.dev"
+      }
+    }
+  }
+}

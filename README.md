@@ -12,7 +12,7 @@ Preparar uma base organizada, acessível e modular para um futuro jogo da forca 
 - SVG reservado para elementos gráficos futuros.
 - Git e GitHub para versionamento.
 
-Não há frameworks de interface. Wrangler é uma dependência de desenvolvimento local para validar o scaffold Cloudflare. O Worker, Durable Object e schema D1 desta etapa são apenas fundação: autenticação e mecânicas multiplayer ainda não foram implementadas, e nenhum recurso remoto foi criado.
+Não há frameworks de interface. Wrangler é uma dependência de desenvolvimento e publicação. O Worker, Durable Object e schema D1 são apenas fundação: autenticação e mecânicas multiplayer ainda não foram implementadas. O Worker de preview, o D1 de preview e o projeto Pages Direct Upload já existem; há um deployment anterior na branch `preview`, mas as mudanças locais recentes do proxy ainda não foram publicadas.
 
 ## Estrutura de diretórios
 
@@ -23,6 +23,8 @@ jogo-da-forca/
 │   ├── skills/                 # Skills reutilizáveis carregadas sob demanda
 │   ├── workflows/              # CI e deploys manuais com gates de ambiente
 │   └── copilot-instructions.md # Instruções gerais do projeto para o Copilot
+├── functions/
+│   └── api/[[path]].js         # Proxy Pages restrito à API same-origin
 ├── .vscode/
 │   └── settings.json           # Preferências locais do editor
 ├── public/
@@ -31,6 +33,7 @@ jogo-da-forca/
 │       ├── icons/              # Ícones e SVGs futuros
 │       └── audio/              # Áudios futuros
 ├── src/
+│   ├── config.js               # Configuração pública por ambiente gerada no build
 │   ├── agent/                  # Espaço reservado para possível IA dentro do jogo
 │   ├── game/                   # Futuras regras e estado do jogo
 │   ├── data/                   # Futuros dados e conteúdos do jogo
@@ -39,7 +42,7 @@ jogo-da-forca/
 │   └── main.js                 # Ponto de entrada JavaScript (módulo ES)
 ├── worker/
 │   ├── src/                    # Worker e Durable Object em scaffold
-│   ├── migrations/             # Migrações D1 ainda não aplicadas remotamente
+│   ├── migrations/             # Migrações D1 local e preview
 │   └── wrangler*.jsonc         # Configuração local, preview e produção
 ├── styles/
 │   ├── base.css                # Estilos globais e variáveis
@@ -50,6 +53,7 @@ jogo-da-forca/
 ├── docs/                       # Regras, arquitetura, governança e plano Cloudflare
 ├── package.json                # Scripts locais e versão fixada do Wrangler
 ├── package-lock.json           # Dependências reprodutíveis
+├── wrangler.jsonc              # Configuração Pages e Service Binding por ambiente
 ├── .node-version               # Versão Node.js usada localmente e no CI
 ├── index.html                  # Página inicial
 ├── .gitignore                  # Arquivos ignorados pelo Git
@@ -73,7 +77,7 @@ npm run check
 npm run wrangler:dev
 ```
 
-O Worker atual é um scaffold: `/health` informa que ainda não está pronto e rotas de sala retornam 501. Não há login, jogo ou serviço Cloudflare remoto configurado.
+O Worker atual é um scaffold: `/health` informa que ainda não está pronto e rotas de sala retornam 501. Não há login nem jogo implementado. A configuração pública `src/config.js` usa o caminho relativo `/api`; em Pages, uma Function encaminha somente esse prefixo via Service Binding. Preview aponta ao Worker `a-forca-medieval-api-preview`; produção não possui binding de API.
 
 Como os módulos ES devem ser carregados por HTTP, não abra o HTML diretamente como arquivo. Inicie um servidor estático na raiz do projeto com Python:
 
@@ -99,8 +103,9 @@ Os agentes personalizados estão em `.github/agents/` e as Skills reutilizáveis
 
 - [Regras do jogo](docs/game-rules.md)
 - [Arquitetura multiplayer](docs/multiplayer-architecture.md)
+- [Preparação do banco de palavras](docs/word-bank.md)
 - [Responsabilidades dos agentes](docs/agent-responsibilities.md)
 - [Guia de Skills](docs/skills-guide.md)
 - [Planejamento de implantação Cloudflare](docs/cloudflare-deployment.md)
 
-Esta documentação descreve a arquitetura planejada; autenticação, partidas, banco de palavras, infraestrutura Cloudflare, testes de jogo e deploy ainda não foram implementados. As próximas etapas devem preparar a integração Cloudflare, implementar autenticação, salas e regras autoritativas, desenvolver a interface multiplayer e então validar CI/CD e publicação. Não configure serviços, instale dependências ou publique sem a aprovação necessária.
+Esta documentação descreve a arquitetura planejada; autenticação, partidas, importação de palavras verificadas e proteção Cloudflare Access para previews ainda não foram concluídas. Publicar as mudanças locais do proxy exige autorização específica para a branch `preview`; `main` é a branch de produção e não foi publicada.

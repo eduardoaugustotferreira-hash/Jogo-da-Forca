@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "a-forca-medieval-proxy-test",
+  "main": "./proxy-test-worker.js",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": false
+}
