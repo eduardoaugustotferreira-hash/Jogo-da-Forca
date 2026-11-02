@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-O repositório contém a página HTML/CSS/ESM, um Worker/DO scaffold, schema D1, e configuração local para encaminhar `/api/*` pelo Pages Function ao Worker de preview via Service Binding. OAuth e gameplay/WebSockets ainda não foram implementados; o proxy não substitui autenticação.
+O repositório contém a página HTML/CSS/ESM, Worker/DO scaffold, schema D1 e Pages Function publicada em Preview para encaminhar `/api/*` via Service Binding. O código local implementa OAuth Google/GitHub e sessões; a migração `0003_oauth_transactions.sql` foi aplicada somente ao D1 local. O estado remoto da migração não pôde ser consultado; credenciais de provedores e publicação do Worker/frontend continuam pendentes. Gameplay/WebSockets continuam não implementados; o proxy não substitui autorização no Worker.
 
 ## Componentes e limites
 
@@ -18,10 +18,14 @@ O repositório contém a página HTML/CSS/ESM, um Worker/DO scaffold, schema D1,
 ### Login e sessão
 
 1. Cliente usa `/api/auth/...` no host Pages; Pages Function encaminha ao Worker pelo binding fixo, sem aceitar destinos do navegador.
-2. Worker cria `state` aleatório de uso único e, quando aplicável, PKCE; redireciona ao provedor com redirect URI previamente registrada.
+2. Worker cria `state` aleatório de uso único vinculado a cookie host-only de navegador, guarda somente hashes de state/vínculo e usa PKCE S256; Google também recebe `nonce`. Transações expiram em 10 minutos.
 3. Worker valida callback, `state`, tokens/identidade e erros no servidor. Google usa OIDC; GitHub usa OAuth e valida identidade via API oficial com identificador estável.
 4. Worker associa a identidade do provedor sem merge por e-mail. Novo provedor só pode ser vinculado por ação explícita de conta autenticada.
-5. Worker emite sessão opaca em cookie seguro; logout revoga sessão e limpa cookie.
+5. Worker emite sessão opaca com identificador de 256 bits; D1 armazena somente SHA-256 do identificador por sete dias. Cookie `__Host-afm_session` é Secure, HttpOnly, SameSite=Lax, Path=/ e sem Domain. Logout exige Origin exata e revoga a sessão.
+
+Esse fluxo é implementado localmente em `worker/src/auth.js`. D1 tem `users`, `provider_identities` e `sessions` pela migração inicial; `0003_oauth_transactions.sql` adiciona apenas transações temporárias e foi aplicada somente ao banco local. O verifier PKCE é cifrado com AES-GCM usando `OAUTH_TRANSACTION_KEY` (chave de 32 bytes, Base64); do nonce Google persiste somente o hash. O histórico remoto não foi confirmado e nenhuma migração remota foi aplicada nesta etapa. Não há Client Secrets configurados, e o OAuth remoto ainda não está ativo.
+
+Referências de protocolo: [Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect) e [GitHub OAuth Apps authorization](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps). GitHub recebe somente `read:user`; nenhum token é persistido ou enviado ao navegador.
 
 Callbacks de Preview preparados (ainda não registrados nos provedores): `https://preview.a-forca-medieval.pages.dev/api/auth/google/callback` e `https://preview.a-forca-medieval.pages.dev/api/auth/github/callback`. O Worker deve usar URLs de callback fixas configuradas por ambiente; não construir callback confiando em `Host` ou `X-Forwarded-Host`.
 
@@ -68,7 +72,8 @@ Usar relógio e aleatoriedade injetáveis, dois clientes sintéticos e storage i
 
 ### Checklist de testes
 
-- [ ] Login Google/GitHub, `state`/PKCE, cookies, logout, vinculação explícita e rejeição de identidade não verificada.
+- [x] Fluxos simulados Google/GitHub, state/PKCE, cookie de navegador, cookies de sessão, logout/CSRF, expiração/revogação e rejeição de token inválido; credenciais e validação remota ainda pendentes.
+- [ ] Vinculação explícita de provedores a uma conta existente (não implementada); contas não são unidas por e-mail.
 - [ ] Criação/entrada/saída de sala privada e rejeição do terceiro jogador e de usuários não autorizados.
 - [ ] Dois clientes independentes recebem snapshots coerentes, sem respostas secretas do adversário.
 - [ ] Letras corretas revelam todas as ocorrências; letras erradas removem uma vida; repetidas não causam dano.

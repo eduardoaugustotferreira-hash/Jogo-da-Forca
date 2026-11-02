@@ -12,7 +12,7 @@ Preparar uma base organizada, acessível e modular para um futuro jogo da forca 
 - SVG reservado para elementos gráficos futuros.
 - Git e GitHub para versionamento.
 
-Não há frameworks de interface. Wrangler é uma dependência de desenvolvimento e publicação. O Worker, Durable Object e schema D1 são apenas fundação: autenticação e mecânicas multiplayer ainda não foram implementadas. O Worker de preview, o D1 de preview e o projeto Pages Direct Upload já existem; há um deployment anterior na branch `preview`, mas as mudanças locais recentes do proxy ainda não foram publicadas.
+Não há frameworks de interface. Wrangler é uma dependência de desenvolvimento e publicação. O Worker, Durable Object e schema D1 são a fundação do projeto. O proxy same-origin já está publicado no Pages Preview; o código OAuth desta etapa existe somente localmente e ainda depende da migração D1 0003, de credenciais provider-side e de publicação autorizada.
 
 ## Estrutura de diretórios
 
@@ -41,8 +41,8 @@ jogo-da-forca/
 │   ├── utils/                  # Futuras funções utilitárias compartilhadas
 │   └── main.js                 # Ponto de entrada JavaScript (módulo ES)
 ├── worker/
-│   ├── src/                    # Worker e Durable Object em scaffold
-│   ├── migrations/             # Migrações D1 local e preview
+│   ├── src/                    # Worker, OAuth local e Durable Object scaffold
+│   ├── migrations/             # Migrações D1 (0003 aplicada somente no local)
 │   └── wrangler*.jsonc         # Configuração local, preview e produção
 ├── styles/
 │   ├── base.css                # Estilos globais e variáveis
@@ -77,7 +77,7 @@ npm run check
 npm run wrangler:dev
 ```
 
-O Worker atual é um scaffold: `/health` informa que ainda não está pronto e rotas de sala retornam 501. Não há login nem jogo implementado. A configuração pública `src/config.js` usa o caminho relativo `/api`; em Pages, uma Function encaminha somente esse prefixo via Service Binding. Preview aponta ao Worker `a-forca-medieval-api-preview`; produção não possui binding de API.
+O Worker mantém `/health` como scaffold e rotas de sala retornam 501. Fluxos OAuth Google/GitHub e sessão opaca estão implementados localmente; `0003_oauth_transactions.sql` foi aplicada somente ao D1 local. O Preview ainda requer confirmação do estado da migração, configuração segura da chave e credenciais, e publicação autorizada do Worker. OAuth ainda não foi configurado no Google/GitHub. A configuração pública usa o caminho relativo `/api`; em Pages, uma Function encaminha somente esse prefixo via Service Binding. Preview aponta ao Worker `a-forca-medieval-api-preview`; produção não possui binding de API.
 
 Como os módulos ES devem ser carregados por HTTP, não abra o HTML diretamente como arquivo. Inicie um servidor estático na raiz do projeto com Python:
 
@@ -108,4 +108,4 @@ Os agentes personalizados estão em `.github/agents/` e as Skills reutilizáveis
 - [Guia de Skills](docs/skills-guide.md)
 - [Planejamento de implantação Cloudflare](docs/cloudflare-deployment.md)
 
-Esta documentação descreve a arquitetura planejada; autenticação, partidas, importação de palavras verificadas e proteção Cloudflare Access para previews ainda não foram concluídas. Publicar as mudanças locais do proxy exige autorização específica para a branch `preview`; `main` é a branch de produção e não foi publicada.
+Autenticação Google/GitHub foi implementada localmente, mas aguarda migração D1, credenciais protegidas e publicação autorizada. Partidas, importação de palavras verificadas e proteção Cloudflare Access para previews ainda não foram concluídas. `main` é a branch de produção e não foi publicada.

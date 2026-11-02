@@ -1,6 +1,6 @@
 # Preparação e implantação Cloudflare
 
-> Estado atualizado: D1, Worker e Durable Object de preview foram provisionados e as migrações foram aplicadas; o Pages Direct Upload já tem deployment na branch `preview`. A configuração local agora inclui Pages Functions e Service Binding, mas ainda não foi publicada. Produção segue sem binding para a API.
+> Estado atualizado: D1, Worker e Durable Object de preview foram provisionados; migrações 0001/0002 estão aplicadas. O Pages Direct Upload e a Function/proxy estão publicados na branch `preview`. OAuth existe somente no código local; a migração 0003 foi aplicada ao D1 local, mas não ao remoto. A leitura do histórico Preview está bloqueada por falta de autorização Cloudflare; credenciais e deploy do Worker/frontend continuam pendentes. Produção segue sem binding API.
 
 ## Componentes planejados
 
@@ -20,8 +20,9 @@
 - `wrangler.jsonc` é a configuração fonte de verdade do Pages Direct Upload. `env.preview.services.API` aponta somente para `a-forca-medieval-api-preview`; `env.production.services` está vazio. A configuração ainda precisa de deployment autorizado para ser aplicada remotamente.
 - `worker/wrangler.jsonc` define o Worker local, o binding SQLite do Durable Object e o D1 local com identificador `local`.
 - `worker/wrangler.preview.jsonc` e `worker/wrangler.production.jsonc` mantêm configurações de Worker separadas. Preview usa o Worker `a-forca-medieval-api-preview`, o namespace DO `Room` e D1 `a-forca-medieval-preview` (ID `0b92be7b-2da7-451d-acee-1ef39e811c38`). Produção não tem binding D1 nem recursos deste projeto.
-- `worker/src/` contém somente endpoints de scaffold: health reporta `ready: false`; rotas de sala retornam 501 até autenticação e multiplayer serem implementados.
-- `worker/migrations/0001_initial.sql` e `0002_word_entries.sql` descrevem o schema inicial e o banco de palavras. Ambas foram aplicadas no D1 local e no D1 remoto de preview; `word_entries` continua vazia.
+- `worker/src/auth.js` implementa localmente fluxos OAuth Google/GitHub, validação de ID Token Google, identificação GitHub por ID imutável, state/PKCE, sessão hash-only e logout CSRF-protegido. Nenhuma credencial real está configurada; o código ainda não foi publicado.
+- `worker/src/index.js` mantém `/health` como scaffold e rotas de sala retornam 501.
+- `worker/migrations/0001_initial.sql` e `0002_word_entries.sql` estão aplicadas no D1 local e remoto de preview; `word_entries` continua vazia. `0003_oauth_transactions.sql` adiciona armazenamento temporário de state/PKCE, com verifier cifrado por AES-GCM e nonce do Google armazenado como hash. Foi aplicada somente ao D1 local após revisão; o Preview remoto não foi alterado e seu histórico não pôde ser consultado. A chave de 32 bytes deve ser configurada como secret do Worker (`OAUTH_TRANSACTION_KEY`, Base64); nenhum valor é armazenado no repositório.
 - `.github/workflows/ci.yml` não usa credenciais Cloudflare. Deploys são `workflow_dispatch`, exigem confirmação digitada e environments `preview`/`production`. Antes de habilitá-los, configurar environment protection/reviewers no GitHub, IDs/bindings reais, nome do Pages project e secrets/vars por ambiente.
 
 Os workflows de deploy não aplicam migrações D1. A migração remota exige um passo separado, revisão do SQL e autorização humana para o banco e ambiente escolhidos. Os workflows falham fechados até `CLOUDFLARE_RESOURCES_CONFIGURED=true` e até o config do Worker do ambiente conter um `database_id` UUID aprovado. O flag e a verificação de formato são preflights, não substituem revisão humana nem criam recursos.
@@ -30,8 +31,8 @@ Os workflows de deploy não aplicam migrações D1. A migração remota exige um
 
 | Ambiente | Frontend | Worker e DO | D1 |
 |---|---|---|---|
-| Local | build em `dist/` | Wrangler local; sala usa storage SQLite local | `a-forca-medieval-local`, somente local |
-| Preview | Pages branch `preview`, URL de alias `https://preview.a-forca-medieval.pages.dev`; deployment ativo | Config local Pages Function `/api/*` com Service Binding `API` → Worker `a-forca-medieval-api-preview`; DO `Room`; callbacks futuros fixados no alias Pages | D1 `a-forca-medieval-preview`; migrações 0001/0002 aplicadas, tabela de palavras vazia |
+| Local | build em `dist/`, controles OAuth no frontend | Worker local implementa OAuth simulado; callbacks fixos `localhost:8788`; sala scaffold | D1 local tem migrações 0001–0003; OAuth requer chave e credenciais configuradas fora do repositório; testes usam usuários sintéticos |
+| Preview | Pages branch `preview`, URL de alias `https://preview.a-forca-medieval.pages.dev`; proxy publicado | Worker Preview remoto ainda é scaffold antigo; código OAuth local aguarda deploy; Service Binding Pages `API` → Worker Preview; callback URLs preparadas | D1 `a-forca-medieval-preview`; migrações 0001/0002 constam como aplicadas; estado da 0003 não verificado por bloqueio de autorização |
 | Produção | Pages branch `main`; ainda sem deploy | `worker/wrangler.production.jsonc`; sem deploy de produção | D1 de produção não criado/configurado |
 
 Bindings de Durable Objects e D1 não são herdados por ambientes Wrangler e precisam ser repetidos explicitamente. Preview declara os bindings remotos já provisionados; produção declara o DO, mas não tem binding D1 nem deploy. O static Pages e API Worker são recursos separados; Pages Functions não cria/publica o DO.
@@ -42,9 +43,9 @@ O Wrangler Pages config separa `env.preview` e `env.production`: só Preview con
 
 Teste local com Wrangler `4.156.0`, Pages dev e um Worker fixture sintético confirmou GET/POST, body/query/cookie, Set-Cookie, redirects permitidos e bloqueados, escopo `/api/*`, erro 404 fora do prefixo e echo de WebSocket via Service Binding. Isso confirma o encaminhamento no runtime local com fixture, não a disponibilidade do WebSocket no deployment remoto atual.
 
-Previews Pages são públicos por padrão; configurar Cloudflare Access continua pendente. Direct Upload não pode ser convertido posteriormente para Git integration. Callbacks fixos de Preview estão preparados em `worker/wrangler.preview.jsonc`, mas ainda não registrados nos consoles Google/GitHub; OAuth não foi implementado. Callback e binding de produção permanecem sem definição/configuração.
+Previews Pages são públicos por padrão; configurar Cloudflare Access continua pendente. Direct Upload não pode ser convertido posteriormente para Git integration. Callbacks fixos de Preview estão preparados em `worker/wrangler.preview.jsonc`, mas ainda não registrados nos consoles Google/GitHub. OAuth está implementado apenas localmente; antes de ativá-lo no Preview, confirmar o estado remoto da migração 0003 e, se pendente, obter aprovação separada para aplicá-la; configurar a chave e Client IDs/secrets em armazenamento protegido e autorizar deploy do Worker e frontend. Callback OAuth de produção não está definido.
 
-O Worker `workers.dev` continua diretamente acessível. CORS não é controle de autorização: rotas privadas futuras devem exigir sessão/CSRF e validar permissões no Worker, independentemente de a chamada ter vindo do Pages Service Binding. Hoje `/health` é público e as rotas de sala falham fechadas com 501; o proxy não altera essa superfície de acesso.
+O Worker `workers.dev` continua diretamente acessível. As novas rotas OAuth locais aceitam somente o host/origem Pages fixos; sessão e logout são tratados no Worker, não no proxy. CORS não é controle de autorização. Rotas de sala continuam scaffold e retornam 501, então autorização de multiplayer ainda não existe.
 
 Documentação oficial consultada em 2026-11-02:
 

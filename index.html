@@ -33,6 +33,20 @@
         <p id="app-status" class="app-status" role="status" aria-live="polite">
           Preparando a página...
         </p>
+
+        <section class="auth-panel" aria-labelledby="auth-title">
+          <h2 id="auth-title">Entrar para jogar</h2>
+          <p id="auth-status" class="auth-status" role="status" aria-live="polite">
+            Verificando sessão...
+          </p>
+          <div id="auth-actions" class="auth-actions">
+            <a class="auth-button" href="/api/auth/google/start">Entrar com Google</a>
+            <a class="auth-button" href="/api/auth/github/start">Entrar com GitHub</a>
+          </div>
+          <button id="logout-button" class="auth-button auth-logout" type="button" hidden>
+            Sair
+          </button>
+        </section>
       </section>
     </main>
   </body>

@@ -1,3 +1,5 @@
+import { handleAuthRequest } from "./auth.js";
+
 const jsonHeaders = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -43,6 +45,11 @@ function forbiddenPreflight() {
 export default {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
+
+    const authResponse = await handleAuthRequest(request, env);
+    if (authResponse) {
+      return authResponse;
+    }
 
     if (request.method === "OPTIONS") {
       const origin = request.headers.get("Origin");

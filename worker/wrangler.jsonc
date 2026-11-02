@@ -5,7 +5,10 @@
   "compatibility_date": "2026-10-30",
   "workers_dev": false,
   "vars": {
-    "APP_ENV": "local"
+    "APP_ENV": "local",
+    "PUBLIC_ORIGIN": "http://localhost:8788",
+    "GOOGLE_REDIRECT_URI": "http://localhost:8788/api/auth/google/callback",
+    "GITHUB_REDIRECT_URI": "http://localhost:8788/api/auth/github/callback"
   },
   "durable_objects": {
     "bindings": [
