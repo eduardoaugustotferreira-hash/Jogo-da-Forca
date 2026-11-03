@@ -17,7 +17,7 @@
   <body>
     <main class="page-shell">
       <section class="intro-card" aria-labelledby="page-title">
-        <p class="eyebrow">Uma aventura está sendo preparada</p>
+        <p class="eyebrow">Um desafio entre reinos</p>
         <h1 id="page-title">A Forca Medieval</h1>
         <p class="subtitle">Um desafio de palavras entre cavaleiros e reinos.</p>
 
@@ -27,25 +27,71 @@
           <span></span>
         </div>
 
-        <p class="development-message">
-          Os portões do reino estão se abrindo. O projeto está em desenvolvimento.
-        </p>
-        <p id="app-status" class="app-status" role="status" aria-live="polite">
-          Preparando a página...
-        </p>
-
-        <section class="auth-panel" aria-labelledby="auth-title">
+        <section class="auth-panel" aria-labelledby="auth-title" aria-busy="true">
           <h2 id="auth-title">Entrar para jogar</h2>
           <p id="auth-status" class="auth-status" role="status" aria-live="polite">
             Verificando sessão...
           </p>
-          <div id="auth-actions" class="auth-actions">
+          <div id="auth-actions" class="auth-actions" hidden>
             <a class="auth-button" href="/api/auth/google/start">Entrar com Google</a>
             <a class="auth-button" href="/api/auth/github/start">Entrar com GitHub</a>
           </div>
           <button id="logout-button" class="auth-button auth-logout" type="button" hidden>
             Sair
           </button>
+          <button
+            id="retry-session-button"
+            class="auth-button auth-retry"
+            type="button"
+            hidden
+          >
+            Verificar novamente
+          </button>
+        </section>
+
+        <section id="multiplayer-panel" class="multiplayer-panel" aria-labelledby="multiplayer-title" hidden>
+          <h2 id="multiplayer-title">Desafio entre reinos</h2>
+          <p id="multiplayer-status" class="multiplayer-status" role="status" aria-live="polite">
+            Entre em uma sala para começar.
+          </p>
+          <div class="room-controls">
+            <label for="character-select">Seu personagem</label>
+            <select id="character-select">
+              <option value="knight">Cavaleiro</option>
+              <option value="archer">Arqueira</option>
+              <option value="mage">Maga</option>
+            </select>
+            <p id="character-status" class="character-status" role="status" aria-live="polite">
+              Personagem escolhido: Cavaleiro.
+            </p>
+            <button id="create-room-button" class="auth-button" type="button">Criar sala privada</button>
+            <label for="invite-code-input">Código do convite</label>
+            <input id="invite-code-input" maxlength="16" autocomplete="off" spellcheck="false">
+            <button id="join-room-button" class="auth-button" type="button">Entrar na sala</button>
+          </div>
+          <section id="game-room" class="game-room" aria-label="Sala de jogo" hidden>
+            <p>Convite: <strong id="invite-code"></strong></p>
+            <div id="game-board" class="game-board">
+              <p id="own-player"></p>
+              <p id="masked-word" class="masked-word">Aguardando adversário</p>
+              <p id="life-status" class="life-status">
+                Vidas restantes: <strong id="lives-count">6 de 6</strong>
+                <span id="life-indicators" aria-hidden="true"></span>
+              </p>
+              <p id="round-info"></p>
+              <p id="opponent-player"></p>
+              <div id="letter-keyboard" class="letter-keyboard" aria-label="Teclado de letras"></div>
+              <img
+                id="victory-art"
+                class="victory-art"
+                src="/public/assets/princess-heart.svg"
+                alt="Uma princesa medieval segura um coração vermelho."
+                hidden
+              >
+            </div>
+            <button id="leave-room-button" class="auth-button" type="button">Abandonar sala</button>
+            <button id="rematch-button" class="auth-button" type="button" hidden>Criar revanche</button>
+          </section>
         </section>
       </section>
     </main>

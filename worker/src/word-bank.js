@@ -503,6 +503,57 @@ export function selectWordPair(
   throw new Error("equivalent pair index was not found");
 }
 
+export function selectWordForReference(
+  entries,
+  reference,
+  {
+    category,
+    usedWordIds = [],
+    randomIndex = secureRandomIndex,
+  } = {},
+) {
+  const used = new Set(usedWordIds);
+  const candidates = entries.filter((entry) => {
+    if (
+      entry.validation_status !== "validated" ||
+      entry.category !== category ||
+      used.has(entry.id) ||
+      entry.normalization_version !== reference.normalization_version ||
+      entry.difficulty_version !== reference.difficulty_version ||
+      !Number.isFinite(entry.difficulty_score) ||
+      !Number.isInteger(entry.word_length) ||
+      !Number.isInteger(entry.distinct_letter_count) ||
+      !Number.isInteger(entry.vowel_count) ||
+      !Number.isFinite(entry.rarity_score)
+    ) {
+      return false;
+    }
+
+    return (
+      getDifficultyBand(entry.difficulty_score) ===
+        getDifficultyBand(reference.difficulty_score) &&
+      Math.abs(entry.word_length - reference.word_length) <= 1 &&
+      Math.abs(
+        entry.distinct_letter_count - reference.distinct_letter_count,
+      ) <= 2 &&
+      Math.abs(
+        entry.vowel_count / entry.word_length -
+          reference.vowel_count / reference.word_length,
+      ) <= 0.2 &&
+      Math.abs(entry.rarity_score - reference.rarity_score) <= 0.2
+    );
+  });
+
+  if (candidates.length === 0) {
+    return { status: "no_equivalent_word", eligibleCount: 0 };
+  }
+  const index = randomIndex(candidates.length);
+  if (!Number.isInteger(index) || index < 0 || index >= candidates.length) {
+    throw new RangeError("randomIndex returned an invalid word index");
+  }
+  return { status: "selected", word: candidates[index] };
+}
+
 function secureRandomIndex(length) {
   if (!Number.isInteger(length) || length < 1) {
     throw new RangeError("length must be a positive integer");

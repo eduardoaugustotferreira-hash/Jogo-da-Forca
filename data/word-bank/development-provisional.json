@@ -1,0 +1,48 @@
+{
+  "manifest": {
+    "sourceName": "Wikcionário em português",
+    "sourceUrl": "https://pt.wiktionary.org/wiki/Wikcion%C3%A1rio:P%C3%A1gina_principal",
+    "sourceVersion": "pt-wiktionary-revision-pinned-curation-2026-11-02",
+    "licenseName": "Creative Commons Atribuição-CompartilhaIgual 4.0 Internacional (CC BY-SA 4.0)",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/deed.pt",
+    "attributionText": "Wikcionário (pt.wiktionary.org), verbete e revisão indicados em source_entry_id; conteúdo sob CC BY-SA 4.0. Modificações: seleção de verbetes, normalização NFC, chave de comparação sem diacríticos e métricas estatísticas. Atribuição e compartilhamento pela mesma licença: https://creativecommons.org/licenses/by-sa/4.0/deed.pt",
+    "redistributionApproved": true,
+    "contentValidation": {
+      "status": "verified",
+      "referenceUrl": "https://pt.wiktionary.org/wiki/Wikcion%C3%A1rio:Direitos_autorais",
+      "reviewedAt": "2026-11-02T23:23:00Z"
+    }
+  },
+  "entries": [
+    { "word": "amigo", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/amigo?oldid=3280526" },
+    { "word": "caminho", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/caminho?oldid=3203646" },
+    { "word": "casa", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/casa?oldid=3227887" },
+    { "word": "castelo", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/castelo?oldid=3190485" },
+    { "word": "cavaleiro", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/cavaleiro?oldid=3251316" },
+    { "word": "cavalo", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/cavalo?oldid=3281111" },
+    { "word": "chave", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/chave?oldid=3282474" },
+    { "word": "coração", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/cora%C3%A7%C3%A3o?oldid=3272358" },
+    { "word": "dragão", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/drag%C3%A3o?oldid=3239493" },
+    { "word": "escudo", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/escudo?oldid=3252624" },
+    { "word": "espada", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/espada?oldid=3251963" },
+    { "word": "estrela", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/estrela?oldid=3285313" },
+    { "word": "flor", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/flor?oldid=3246355" },
+    { "word": "floresta", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/floresta?oldid=3261347" },
+    { "word": "igreja", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/igreja?oldid=3285787" },
+    { "word": "janela", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/janela?oldid=3171511" },
+    { "word": "jardim", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/jardim?oldid=3199544" },
+    { "word": "mar", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/mar?oldid=3225323" },
+    { "word": "maçã", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/ma%C3%A7%C3%A3?oldid=3188657" },
+    { "word": "montanha", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/montanha?oldid=3217060" },
+    { "word": "noite", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/noite?oldid=3264218" },
+    { "word": "pedra", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/pedra?oldid=3231050" },
+    { "word": "ponte", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/ponte?oldid=3204237" },
+    { "word": "princesa", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/princesa?oldid=3249442" },
+    { "word": "pão", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/p%C3%A3o?oldid=3259849" },
+    { "word": "reino", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/reino?oldid=3199765" },
+    { "word": "rio", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/rio?oldid=3232527" },
+    { "word": "sol", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/sol?oldid=3260693" },
+    { "word": "tesouro", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/tesouro?oldid=3199043" },
+    { "word": "árvore", "category": "geral", "lexicalStatus": "verified", "sourceEntryId": "https://pt.wiktionary.org/wiki/%C3%A1rvore?oldid=3279342" }
+  ]
+}

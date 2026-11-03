@@ -84,4 +84,16 @@ A escolha aleatória usa `crypto.getRandomValues` com rejeição para evitar vi�
 
 ## Estado do corpus
 
-Nenhuma fonte ou licença foi aprovada e nenhum pacote de palavras foi fornecido nesta etapa. Portanto, **0 palavras foram importadas ou verificadas**; a meta de 1.000 continua pendente. Fixtures dos testes são sintéticas, efêmeras e não entram no banco.
+### Corpus provisório de desenvolvimento
+
+O pacote [development-provisional.json](../data/word-bank/development-provisional.json) contém 30 formas lexicais comuns selecionadas manualmente em verbetes do Wikcionário em português. Cada `sourceEntryId` fixa o verbete e sua revisão (`oldid`); as 30 entradas foram confirmadas na categoria `!Entrada (Português)`. Não foram copiados definições ou exemplos.
+
+- Fonte e versão: Wikcionário em português, revisões fixadas em `pt-wiktionary-revision-pinned-curation-2026-11-02`.
+- Licença: CC BY-SA 4.0, conforme [Direitos autorais do Wikcionário](https://pt.wiktionary.org/wiki/Wikcion%C3%A1rio:Direitos_autorais). A atribuição identifica o projeto, liga cada verbete/revisão via `source_entry_id`, informa as transformações e conserva a licença share-alike.
+- Validação lexical e licença revisadas em 2026-11-02; o corpus está explicitamente limitado a desenvolvimento e teste, não é uma cobertura lexical ampla nem substitui um corpus de produção.
+- O Wikcionário consultado valida a entrada em português, não uma frequência ou variante exclusivamente brasileira. A escolha para o jogo é uma curadoria manual de formas usuais; os scores não medem frequência real no português brasileiro.
+- Preparação reproduzível: 30 linhas, 30 palavras únicas após normalização, 0 rejeições, uma versão de dificuldade e 84 pares equivalentes elegíveis pelo algoritmo atual.
+- No teste determinístico de seleção, foram possíveis cinco pares sem reutilização (10 palavras). Uma caminhada sequencial pela primeira opção produziu 13 pares disjuntos antes da exaustão; isso não garante duração ilimitada de Deathmatch. A exaustão permanece um resultado controlado, sem repetição.
+- Importado somente no D1 local. Não foi criada migração nova e nenhum banco remoto foi lido ou modificado.
+
+A meta de 1.000 palavras continua pendente. Este conjunto pequeno é material provisório licenciado e rastreável, não um corpus definitivo.

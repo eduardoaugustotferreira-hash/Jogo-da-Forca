@@ -11,6 +11,15 @@
     "GOOGLE_REDIRECT_URI": "https://preview.a-forca-medieval.pages.dev/api/auth/google/callback",
     "GITHUB_REDIRECT_URI": "https://preview.a-forca-medieval.pages.dev/api/auth/github/callback"
   },
+  "secrets": {
+    "required": [
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "GITHUB_CLIENT_ID",
+      "GITHUB_CLIENT_SECRET",
+      "OAUTH_TRANSACTION_KEY"
+    ]
+  },
   "durable_objects": {
     "bindings": [
       {

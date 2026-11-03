@@ -17,6 +17,9 @@ for (const entry of [
   "styles",
   "src/main.js",
   "src/config.js",
+  "src/auth-session.js",
+  "src/auth-ui.js",
+  "src/multiplayer-ui.js",
   "public/assets",
 ]) {
   await cp(path.join(projectRoot, entry), path.join(outputDirectory, entry), {

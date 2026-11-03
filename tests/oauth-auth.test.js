@@ -155,6 +155,7 @@ function createEnv(database = createDatabase(), overrides = {}) {
       if (url.href === "https://oauth2.googleapis.com/token") {
         const form = new URLSearchParams(init.body);
         if (
+          form.get("grant_type") !== "authorization_code" ||
           form.get("code_verifier") !== env.validPkceVerifier ||
           form.get("redirect_uri") !== googleRedirectUri
         ) {
@@ -389,6 +390,50 @@ test("same-origin Pages proxy preserves OAuth redirects and both host-only cooki
   assert.ok(cookies.some((cookie) => cookie.startsWith(`${authConstants.SESSION_COOKIE}=`)));
   assert.ok(cookies.some((cookie) => cookie.startsWith(`${authConstants.OAUTH_COOKIE}=`)));
   assert.ok(cookies.every((cookie) => !/Domain=/i.test(cookie)));
+  const sessionCookieValue = cookies
+    .find((cookie) => cookie.startsWith(`${authConstants.SESSION_COOKIE}=`))
+    .split(";", 1)[0];
+  const session = await pagesProxy({
+    request: new Request(`${origin}/api/auth/session`, {
+      headers: { Cookie: sessionCookieValue },
+    }),
+    env: proxyEnv,
+  });
+  assert.equal(session.status, 200);
+  assert.deepEqual(await session.json(), {
+    authenticated: true,
+    user: { displayName: "Cavaleiro Sintético" },
+  });
+
+  const logout = await pagesProxy({
+    request: new Request(`${origin}/api/auth/logout`, {
+      method: "POST",
+      headers: {
+        Origin: origin,
+        "Content-Type": "application/json",
+        Cookie: sessionCookieValue,
+      },
+      body: "{}",
+    }),
+    env: proxyEnv,
+  });
+  assert.equal(logout.status, 200);
+  assert.match(
+    logout.headers.getSetCookie().find((cookie) =>
+      cookie.startsWith(`${authConstants.SESSION_COOKIE}=`),
+    ),
+    /Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT/,
+  );
+  const sessionAfterLogout = await pagesProxy({
+    request: new Request(`${origin}/api/auth/session`, {
+      headers: { Cookie: sessionCookieValue },
+    }),
+    env: proxyEnv,
+  });
+  assert.deepEqual(await sessionAfterLogout.json(), {
+    authenticated: false,
+    user: null,
+  });
   assert.equal(
     env.DB
       .prepare("SELECT pkce_verifier_ciphertext FROM oauth_transactions WHERE state_hash = ?")
@@ -451,6 +496,93 @@ test("PKCE verifier mismatch is rejected and does not create a session", async (
     error: "identity_provider_unavailable",
   });
   assert.equal(env.DB.prepare("SELECT COUNT(*) AS count FROM sessions").first().count, 0);
+});
+
+test("Google token exchange uses the authorization-code grant and logs safe failure details", async () => {
+  let tokenRequest;
+  const env = createEnv(undefined, {
+    OAUTH_FETCH: async (input, init = {}) => {
+      if (new URL(input).href !== "https://oauth2.googleapis.com/token") {
+        throw new Error("Unexpected synthetic provider request.");
+      }
+      tokenRequest = new URLSearchParams(init.body);
+      return Response.json(
+        {
+          error: "invalid_client",
+          error_description: "synthetic-secret-marker",
+        },
+        { status: 401 },
+      );
+    },
+  });
+  const login = await startLogin(env);
+  const diagnostics = [];
+  const originalConsoleError = console.error;
+  console.error = (message) => diagnostics.push(String(message));
+  let response;
+  try {
+    response = await worker.fetch(
+      callbackRequest("google", login.state, login.binding),
+      env,
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(tokenRequest.get("grant_type"), "authorization_code");
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), {
+    error: "identity_provider_unavailable",
+  });
+  assert.deepEqual(diagnostics.map((entry) => JSON.parse(entry)), [
+    {
+      event: "oauth_provider_failure",
+      provider: "google",
+      stage: "token_exchange",
+      reason: "http_error",
+      httpStatus: 401,
+      providerCode: "invalid_client",
+    },
+  ]);
+  assert.doesNotMatch(diagnostics.join("\n"), /synthetic-secret-marker|invalid_grant|client_secret/);
+});
+
+test("Google JWKS network failures are logged without exception contents", async () => {
+  const env = createEnv(undefined, {
+    OAUTH_FETCH: async (input) => {
+      if (new URL(input).href === "https://oauth2.googleapis.com/token") {
+        return Response.json({
+          access_token: "synthetic-google-access-token",
+          id_token: env.googleToken,
+        });
+      }
+      throw new Error("synthetic-network-detail-marker");
+    },
+  });
+  const login = await startLogin(env);
+  const diagnostics = [];
+  const originalConsoleError = console.error;
+  console.error = (message) => diagnostics.push(String(message));
+  let response;
+  try {
+    response = await worker.fetch(
+      callbackRequest("google", login.state, login.binding),
+      env,
+    );
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(response.status, 502);
+  assert.deepEqual(diagnostics.map((entry) => JSON.parse(entry)), [
+    {
+      event: "oauth_provider_failure",
+      provider: "google",
+      stage: "jwks_fetch",
+      reason: "network_error",
+    },
+  ]);
+  assert.doesNotMatch(diagnostics.join("\n"), /synthetic-network-detail-marker/);
 });
 
 test("tampered encrypted PKCE verifier is rejected before contacting the provider", async () => {
@@ -650,6 +782,24 @@ test("session expiry, revocation, direct Worker origin, and logout CSRF are enfo
     env,
   );
   assert.deepEqual(await expired.json(), { authenticated: false, user: null });
+});
+
+test("session without a cookie or with an invalid cookie is anonymous", async () => {
+  const env = createEnv();
+  for (const headers of [
+    {},
+    { Cookie: `${authConstants.SESSION_COOKIE}=invalid-session-id` },
+  ]) {
+    const response = await worker.fetch(
+      new Request(`${origin}/auth/session`, { headers }),
+      env,
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      authenticated: false,
+      user: null,
+    });
+  }
 });
 
 test("missing credentials, malformed methods, and provider errors fail closed", async () => {

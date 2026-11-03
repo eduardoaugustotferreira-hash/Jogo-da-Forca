@@ -1,11 +1,11 @@
 # Regras de jogo
 
-Este documento define o contrato pretendido para partidas PvP. A implementação ainda não existe; decisões aqui não significam que regras foram executadas ou testadas.
+Este documento define as regras PvP implementadas no código local e cobertas por testes automatizados. Os testes usam jogadores, palavras e storage sintéticos; não comprovam execução online no runtime Cloudflare.
 
 ## Sala e preparação
 
-- Uma sala privada admite exatamente dois jogadores autenticados.
-- Cada jogador escolhe um personagem e confirma prontidão. O servidor só inicia quando ambos estão presentes e prontos.
+- Uma sala privada admite no máximo dois jogadores autenticados, com assento único por conta.
+- Cada jogador escolhe um personagem ao criar/entrar. O servidor inicia quando o segundo jogador válido entra.
 - Identidade, personagem, palavra, vidas, estado e placar são validados no servidor.
 
 ## Rodada normal
@@ -15,8 +15,8 @@ Este documento define o contrato pretendido para partidas PvP. A implementação
 - Uma letra válida já tentada não remove vida novamente.
 - O primeiro a completar a própria palavra vence. Se um jogador perder todas as vidas e o adversário continuar ativo, o adversário vence a rodada.
 - Se ambos falharem na mesma adjudicação terminal, a rodada é reiniciada com novas palavras não usadas e sem conceder ponto. Se eventos terminais não forem simultâneos conforme a adjudicação do servidor, aplica-se a sequência serializada.
-- Se dois jogadores completarem palavras no mesmo lote de adjudicação, o desempate pré-gravado escolhe o vencedor; conclusão contra falha no mesmo lote favorece o jogador que concluiu, pois o outro falhou.
-- Erros ortográficos e comparação de acentos devem obedecer a uma política única e documentada antes da implementação; a forma exibida preserva os acentos.
+- Eventos terminais recebidos durante a janela server-side de 100 ms são adjudicados em lote; se dois completarem, o assento de desempate gerado antes da rodada escolhe o vencedor. Conclusão contra falha no mesmo lote favorece quem concluiu.
+- Letras são normalizadas para minúsculas e sem diacríticos; a comparação usa a chave canônica e a forma exibida preserva acentos.
 
 ## Partida e Deathmatch
 
@@ -32,7 +32,7 @@ Este documento define o contrato pretendido para partidas PvP. A implementação
 - Eventos terminais processados na mesma adjudicação atômica são resolvidos por valor de desempate gerado e persistido antes da rodada, sem depender da ordem de sockets. Eventos em adjudicações diferentes seguem a sequência serializada. Latência de rede não pode ser eliminada; não será um critério explícito de desempate.
 - Ao perder conexão, a sala pausa e inicia uma tolerância proposta de 60 segundos. O jogador pode recuperar o lugar usando a mesma conta autenticada.
 - Se só um jogador não reconectar antes do prazo, ele perde a partida por abandono. Se nenhum dos dois voltar, a sala é cancelada sem vencedor ou ponto. O prazo usa relógio do servidor, não timestamps do cliente.
-- O prazo de 60 segundos é uma configuração inicial proposta, sujeita a validação de UX e testes antes do lançamento.
+- O prazo de 60 segundos é aplicado pelo relógio do Durable Object. A UX e o comportamento ainda precisam de validação online antes do lançamento.
 
 ## Banco de palavras
 
@@ -44,3 +44,10 @@ Este documento define o contrato pretendido para partidas PvP. A implementação
 - O sorteio acontece no servidor e evita repetição por toda a partida, inclusive em reinícios de rodada e Deathmatch.
 - O seletor PvP exige faixa de dificuldade e versão de métricas compatíveis, além de tolerâncias documentadas de tamanho e estatísticas; ausência de par retorna condição explícita, sem revelar ou inventar resposta.
 - Se o conjunto elegível sem uso se esgotar, a partida deve encerrar/cancelar de forma explícita ou usar uma política futura aprovada. Não repetir nem inventar palavras silenciosamente.
+- A configuração local/Preview não inclui palavras provisórias automáticas: se D1 não tiver um par equivalente validado, a sala permanece aguardando e a resposta informa `word_pool_unavailable`.
+
+## Validação do MVP local
+
+- Rotas autenticadas: `POST /api/v1/rooms`, `POST /api/v1/rooms/{código}/join`, `GET /api/v1/rooms/{código}` e WebSocket `GET /api/v1/rooms/{código}/ws`.
+- Comandos WebSocket aceitos: `round.guess` e `room.leave`; a identidade é resolvida no Worker a partir da sessão.
+- Testes determinísticos cobrem regras, idempotência, isolamento da resposta, abandono e seleção de palavras. WebSocket real, OAuth online e partida completa em dois navegadores ainda precisam de validação no Preview.

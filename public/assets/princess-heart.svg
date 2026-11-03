@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 150" role="img" aria-labelledby="title description">
+  <title id="title">Celebração do reino</title>
+  <desc id="description">Uma princesa medieval segura um coração vermelho.</desc>
+  <path fill="#d7b66b" d="M37 134h106v8H37z"/>
+  <path fill="#24392b" stroke="#d7b66b" stroke-width="4" d="M49 134V91q0-34 41-34t41 34v43z"/>
+  <path fill="#f1c99b" stroke="#563c2b" stroke-width="3" d="M67 71q23-19 46 0v34q0 24-23 24t-23-24z"/>
+  <path fill="#6c3e2d" d="M61 75q0-37 29-37t29 37l-12-8-17 8-17-8z"/>
+  <path fill="#d7b66b" stroke="#563c2b" stroke-width="3" d="M80 42 90 18l10 24z"/>
+  <path fill="#f5e8c5" d="M79 91h7v4h-7zm15 0h7v4h-7z"/>
+  <path fill="none" stroke="#8b4e43" stroke-linecap="round" stroke-width="3" d="M84 108q6 5 12 0"/>
+  <path fill="#a8323e" stroke="#f5e8c5" stroke-width="2" d="M132 78c-8-10-23 2-10 14l15 13 15-13c13-12-2-24-10-14l-5 5z"/>
+  <path fill="none" stroke="#d7b66b" stroke-width="5" d="m55 112-17 16m87-16 17 16"/>
+</svg>

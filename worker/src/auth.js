@@ -9,6 +9,13 @@ const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 const GITHUB_USER_URL = "https://api.github.com/user";
 const GITHUB_API_VERSION = "2022-11-28";
+const SAFE_PROVIDER_ERROR_CODES = new Set([
+  "invalid_client",
+  "invalid_grant",
+  "invalid_request",
+  "unauthorized_client",
+  "unsupported_grant_type",
+]);
 const SESSION_COOKIE_OPTIONS = "Path=/; Secure; HttpOnly; SameSite=Lax";
 const OAUTH_COOKIE_OPTIONS = `${SESSION_COOKIE_OPTIONS}; Max-Age=600`;
 
@@ -242,7 +249,23 @@ function authFetch(env) {
   return typeof env.OAUTH_FETCH === "function" ? env.OAUTH_FETCH : fetch;
 }
 
-function providerError(status = 502) {
+function providerError(status = 502, diagnostic) {
+  if (diagnostic) {
+    console.error(
+      JSON.stringify({
+        event: "oauth_provider_failure",
+        provider: diagnostic.provider,
+        stage: diagnostic.stage,
+        reason: diagnostic.reason,
+        ...(Number.isInteger(diagnostic.httpStatus)
+          ? { httpStatus: diagnostic.httpStatus }
+          : {}),
+        ...(SAFE_PROVIDER_ERROR_CODES.has(diagnostic.providerCode)
+          ? { providerCode: diagnostic.providerCode }
+          : {}),
+      }),
+    );
+  }
   throw new AuthError(status, "identity_provider_unavailable");
 }
 
@@ -342,14 +365,29 @@ async function beginAuthorization(request, env, provider) {
   return new Response(null, { status: 302, headers });
 }
 
-async function parseJsonResponse(response) {
+async function safeProviderErrorCode(response) {
+  try {
+    const body = await response.clone().json();
+    return SAFE_PROVIDER_ERROR_CODES.has(body.error) ? body.error : null;
+  } catch {
+    return null;
+  }
+}
+
+async function parseJsonResponse(response, provider, stage) {
   if (!response.ok) {
-    providerError();
+    providerError(502, {
+      provider,
+      stage,
+      reason: "http_error",
+      httpStatus: response.status,
+      providerCode: await safeProviderErrorCode(response),
+    });
   }
   try {
     return await response.json();
   } catch {
-    providerError();
+    providerError(502, { provider, stage, reason: "invalid_json" });
   }
 }
 
@@ -361,13 +399,17 @@ async function exchangeCode(provider, code, transaction, env) {
     provider,
     env,
   );
-  const body = new URLSearchParams({
+  const parameters = {
     client_id: clientId,
     client_secret: clientSecret,
     code,
     redirect_uri: transaction.redirect_uri,
     code_verifier: verifier,
-  });
+  };
+  if (provider === "google") {
+    parameters.grant_type = "authorization_code";
+  }
+  const body = new URLSearchParams(parameters);
 
   let response;
   try {
@@ -383,12 +425,24 @@ async function exchangeCode(provider, code, transaction, env) {
       },
     );
   } catch {
-    providerError();
+    providerError(502, {
+      provider,
+      stage: "token_exchange",
+      reason: "network_error",
+    });
   }
 
-  const tokenData = await parseJsonResponse(response);
+  const tokenData = await parseJsonResponse(
+    response,
+    provider,
+    "token_exchange",
+  );
   if (typeof tokenData.access_token !== "string" || !tokenData.access_token) {
-    providerError(401);
+    providerError(401, {
+      provider,
+      stage: "token_exchange",
+      reason: "missing_access_token",
+    });
   }
   return tokenData;
 }
@@ -420,9 +474,17 @@ async function googleIdentity(idToken, transaction, env) {
       headers: { Accept: "application/json" },
     });
   } catch {
-    providerError();
+    providerError(502, {
+      provider: "google",
+      stage: "jwks_fetch",
+      reason: "network_error",
+    });
   }
-  const jwks = await parseJsonResponse(jwksResponse);
+  const jwks = await parseJsonResponse(
+    jwksResponse,
+    "google",
+    "jwks_fetch",
+  );
   const jwk = jwks.keys?.find(
     (key) =>
       key.kid === header.kid &&
@@ -501,9 +563,17 @@ async function githubIdentity(accessToken, env) {
       },
     });
   } catch {
-    providerError();
+    providerError(502, {
+      provider: "github",
+      stage: "user_profile_fetch",
+      reason: "network_error",
+    });
   }
-  const profile = await parseJsonResponse(response);
+  const profile = await parseJsonResponse(
+    response,
+    "github",
+    "user_profile_fetch",
+  );
   const subject =
     typeof profile.id === "number" && Number.isSafeInteger(profile.id) && profile.id > 0
       ? String(profile.id)
@@ -695,17 +765,17 @@ async function completeAuthorization(request, env, provider) {
   return new Response(null, { status: 302, headers });
 }
 
-async function currentSession(request, env) {
+export async function getAuthenticatedUser(request, env) {
   assertPagesRequest(request, env);
   const sessionId = oneCookie(request, SESSION_COOKIE);
   if (!sessionId) {
-    return jsonResponse({ authenticated: false, user: null });
+    return null;
   }
 
   const now = new Date().toISOString();
   const user = await database(env)
     .prepare(
-      `SELECT users.display_name
+      `SELECT users.id, users.display_name
        FROM sessions
        JOIN users ON users.id = sessions.user_id
        WHERE sessions.id_hash = ?
@@ -715,6 +785,11 @@ async function currentSession(request, env) {
     )
     .bind(await sha256(sessionId), now)
     .first();
+  return user ?? null;
+}
+
+async function currentSession(request, env) {
+  const user = await getAuthenticatedUser(request, env);
   if (!user) {
     return jsonResponse({ authenticated: false, user: null });
   }

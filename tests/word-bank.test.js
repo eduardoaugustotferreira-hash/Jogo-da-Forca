@@ -9,6 +9,7 @@ import {
   normalizeWord,
   prepareWordBank,
   selectWordPair,
+  selectWordForReference,
 } from "../worker/src/word-bank.js";
 import { buildWordEntryInsertSql } from "../worker/src/word-bank-import.js";
 
@@ -63,6 +64,33 @@ function pairEntry(id, overrides = {}) {
     ...overrides,
   };
 }
+
+test("Deathmatch word rotation selects a distinct equivalent word only", () => {
+  const reference = pairEntry("used-word");
+  const equivalent = pairEntry("fresh-word");
+  const unrelated = pairEntry("other-version", {
+    difficulty_version: "other-rubric-v2",
+  });
+  const selection = selectWordForReference(
+    [reference, equivalent, unrelated],
+    reference,
+    {
+      category: "geral",
+      usedWordIds: ["used-word"],
+      randomIndex: () => 0,
+    },
+  );
+
+  assert.equal(selection.status, "selected");
+  assert.equal(selection.word.id, "fresh-word");
+  assert.equal(
+    selectWordForReference([reference], reference, {
+      category: "geral",
+      usedWordIds: ["used-word"],
+    }).status,
+    "no_equivalent_word",
+  );
+});
 
 test("normalization preserves NFC display spelling and compares without accents", () => {
   const normalized = normalizeWord("A\u00c7A\u0303O");

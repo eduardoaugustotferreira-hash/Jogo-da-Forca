@@ -2,7 +2,7 @@
 
 ## Estado atual
 
-O repositório contém a página HTML/CSS/ESM, Worker/DO scaffold, schema D1 e Pages Function publicada em Preview para encaminhar `/api/*` via Service Binding. O código local implementa OAuth Google/GitHub e sessões; a migração `0003_oauth_transactions.sql` foi aplicada somente ao D1 local. O estado remoto da migração não pôde ser consultado; credenciais de provedores e publicação do Worker/frontend continuam pendentes. Gameplay/WebSockets continuam não implementados; o proxy não substitui autorização no Worker.
+O código local agora inclui API autenticada de salas, Durable Object com estado persistido, WebSockets, regras autoritativas e uma interface básica de jogo. A suíte local cobre a lógica e handlers com fixtures, mas não equivale a teste real em dois navegadores ou a validação de uma implantação. A tabela D1 de palavras continua sem corpus validado; portanto, novas salas não iniciam uma partida até existir um par elegível. Nenhum deploy, upload, migração remota ou alteração de secrets faz parte desta implementação local.
 
 ## Componentes e limites
 
@@ -31,19 +31,21 @@ Callbacks de Preview preparados (ainda não registrados nos provedores): `https:
 
 ### Sala e WebSocket
 
-O Worker autentica a requisição de upgrade, valida `Origin` e associa a sessão à sala Durable Object. O Durable Object verifica convite e capacidade, atribui assento, valida cada comando e envia resposta individual ou evento público. Convites usam códigos não sequenciais com validade/revogação; código não substitui autenticação nem autorização.
+O Worker autentica cada requisição usando a sessão D1, deriva o ID interno do usuário, exige `Origin` exata em mutações/upgrade e encaminha para `ROOMS.idFromName(código)`. Os endpoints same-origin são `POST /api/v1/rooms`, `POST /api/v1/rooms/{código}/join`, `GET /api/v1/rooms/{código}` e `GET /api/v1/rooms/{código}/ws`. Códigos têm 16 caracteres aleatórios do alfabeto seguro, equivalentes a 80 bits de espaço; o código não substitui autenticação ou membership. Cada Durable Object persiste a sala no próprio storage.
+
+O cliente envia o envelope versionado `round.guess` (letra) ou `room.leave`; a identidade vem da sessão validada no upgrade, nunca do payload. O DO serializa comandos, rejeita sockets antigos após reconexão, limita tamanho/frequência e deduplica `eventId`. O snapshot revela somente a máscara, vidas e letras do próprio jogador; do oponente mostra nome, personagem, conexão, placar e progresso. Respostas completas só aparecem após encerramento da partida. O DO encerra ou cancela explicitamente a partida quando não há palavras elegíveis; não cria fixtures nem grava palavras.
 
 ## Contrato de eventos inicial
 
-Envelope de comando, com versão e idempotência:
+Envelope de jogada aceito pela implementação local, com versão e idempotência:
 
 ```json
 {"version":1,"eventId":"opaque-client-id","type":"round.guess","payload":{"letter":"a"}}
 ```
 
-O servidor deriva identidade da sessão; rejeita `userId` como autoridade. Comandos planejados: `room.join`, `player.character`, `player.ready`, `round.guess`, `room.leave`, `match.reconnect`.
+O servidor deriva identidade da sessão; rejeita `userId` como autoridade. O jogador escolhe `characterId` ao criar/entrar por requisição HTTP; ambos presentes iniciam a rodada. Ainda não há comandos `player.ready`, customização posterior de personagem, chat ou matchmaking público.
 
-Eventos planejados: `room.snapshot`, `player.updated`, `round.started`, `guess.accepted`, `player.progress`, `round.completed`, `match.completed`, `room.error`.
+Eventos locais: `room.snapshot`, `round.action`, `room.action` e `error`. Snapshots são individualizados por jogador; comandos não devolvem palavra do adversário.
 
 O protocolo deverá documentar, por evento, destinatário, esquema, fase permitida e dados expostos. Cada jogador recebe sua própria máscara de palavra; do adversário somente progresso público permitido. Nenhuma mensagem, snapshot, atributo DOM ou log do cliente contém palavra completa não revelada.
 
@@ -54,7 +56,7 @@ O protocolo deverá documentar, por evento, destinatário, esquema, fase permiti
 - Eventos terminais no mesmo lote de adjudicação usam desempate pré-gravado pelo servidor, sem relógio do cliente ou ordem de iteração de sockets. Fora desse lote, vale sequência do servidor.
 - Reconexão requer mesma conta autenticada, invalida socket antigo e reenvia snapshot sanitizado.
 - Desconexão pausa a sala por período configurável (proposta inicial: 60 segundos); abandono de um jogador concede a partida ao outro; ausência dos dois cancela a sala sem vencedor.
-- Persistência e recuperação do estado do Durable Object devem ser projetadas e testadas antes de produção; não presumir que memória efêmera é durável.
+- O estado de jogo usa storage persistente do Durable Object. A suíte local valida o modelo e handler com storage/socket simulados; hibernação, recuperação e WebSockets Cloudflare reais ainda precisam ser comprovados no ambiente Preview antes de produção.
 
 ## Modelo de dados conceitual
 
@@ -68,22 +70,22 @@ O estado ativo e respostas secretas ficam no Durable Object. A preparação do c
 
 ## Testes de arquitetura
 
-Usar relógio e aleatoriedade injetáveis, dois clientes sintéticos e storage isolado para validar capacidade, autorização, replay, corrida de eventos, isolamento de dados secretos, reconnect, abandono, pontuação, reinício e Deathmatch. Testes não devem depender de atraso real da rede para determinar vencedor.
+Usar relógio e aleatoriedade injetáveis, dois clientes sintéticos e storage isolado para validar capacidade, autorização, replay, corrida de eventos, isolamento de dados secretos, reconnect, abandono, pontuação, reinício e Deathmatch. Testes não devem depender de atraso real da rede para determinar vencedor. Os testes Node de handlers/socket não exercitam o runtime WebSocket real da Cloudflare.
 
 ### Checklist de testes
 
 - [x] Fluxos simulados Google/GitHub, state/PKCE, cookie de navegador, cookies de sessão, logout/CSRF, expiração/revogação e rejeição de token inválido; credenciais e validação remota ainda pendentes.
 - [ ] Vinculação explícita de provedores a uma conta existente (não implementada); contas não são unidas por e-mail.
-- [ ] Criação/entrada/saída de sala privada e rejeição do terceiro jogador e de usuários não autorizados.
-- [ ] Dois clientes independentes recebem snapshots coerentes, sem respostas secretas do adversário.
-- [ ] Letras corretas revelam todas as ocorrências; letras erradas removem uma vida; repetidas não causam dano.
-- [ ] Conclusão, falha, falha dupla e reinício sem ponto seguem a adjudicação do servidor.
-- [ ] Eventos repetidos são idempotentes; comandos inválidos, fora de fase ou forjados são rejeitados.
-- [ ] Placar termina em três vitórias e transita de 2–2 diretamente para Deathmatch.
-- [ ] Deathmatch começa com uma vida e exatamente uma posição revelada; erros eliminam, palavras completadas rotacionam sem restaurar vida.
-- [ ] Eliminação simultânea usa desempate pré-gravado e não relógio/latência do cliente.
-- [ ] Desconexão pausa a sala; reconexão válida restaura snapshot sanitizado; socket antigo é rejeitado.
-- [ ] Expiração de abandono concede vitória ao jogador presente; ausência de ambos cancela sem pontuação.
+- [x] Criação/entrada de sala e rejeição do terceiro jogador foram implementadas; membership depende de sessão.
+- [x] Snapshot individual mascara resposta adversária; verificação de handler usa clientes/sockets sintéticos.
+- [x] Letras corretas revelam ocorrências; incorretas removem vida; repetição não causa dano.
+- [x] Conclusão, falha, falha dupla e reinício sem ponto seguem a adjudicação do servidor.
+- [x] Eventos repetidos são idempotentes; comandos inválidos e socket antigo são rejeitados.
+- [x] Placar chega a três vitórias e transita de 2–2 para Deathmatch.
+- [x] Deathmatch começa com uma vida e uma posição revelada; palavras rotacionam sem restaurar vida.
+- [x] Eliminação simultânea usa assento de desempate pré-gravado pelo servidor.
+- [x] Disconnect/reconnect/abandono estão implementados e cobertos no modelo com storage simulado.
+- [ ] Executar testes de dois navegadores contra Preview e validar WebSocket Cloudflare real; ainda não foi publicado.
 - [ ] Corpus valida unicidade, licença, normalização, metadados, métricas e ausência de repetição/pares desequilibrados.
 - [ ] Interface funciona por teclado, em viewport móvel e com movimento reduzido, sem resposta secreta em markup/estado.
-- [x] Pages Function local encaminha HTTP e WebSocket pela Service Binding usando Worker fixture; isso não significa que login ou multiplayer estejam implementados.
+- [x] Pages Function encaminha HTTP e WebSocket pela Service Binding; configuração/deployment remoto não foi alterado nesta tarefa.
